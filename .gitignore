@@ -1,0 +1,15 @@
+target/
+
+.env
+
+*.log
+
+.idea/
+*.iml
+
+.DS_Store
+Thumbs.db
+
+AGENTS.md
+opencode.json
+docs/superpowers/
