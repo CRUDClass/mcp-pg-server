@@ -1,0 +1,9 @@
+services:
+  mcp-pg-server:
+    build: .
+    container_name: mcp-pg-server
+    ports:
+      - "15432:15432"
+    env_file:
+      - .env
+    restart: unless-stopped
