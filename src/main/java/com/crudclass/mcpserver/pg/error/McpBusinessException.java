@@ -5,12 +5,11 @@ import com.crudclass.mcpserver.pg.enums.McpErrorCode;
 import java.io.Serial;
 
 /**
- * Business exception that carries an {@link McpErrorCode}.
+ * Business exception that carries an {@link McpErrorCode} and locale.
  * <p>
- * Thrown by {@link com.crudclass.mcpserver.pg.service.SqlValidator} and
- * {@link com.crudclass.mcpserver.pg.service.SqlExecutor} to signal
- * validation failures, execution errors, and security rejections.
- * Caught globally by {@link ExceptionMapper}.
+ * The single-arg and two-arg constructors default to "zh" for backward
+ * compatibility with callers that don't yet have ToolMessages injected.
+ * The three-arg constructor allows locale-aware error messages.
  *
  * @author CRUDClass
  */
@@ -20,18 +19,27 @@ public class McpBusinessException extends RuntimeException {
     private static final long serialVersionUID = -2582293232143204024L;
 
     private final McpErrorCode errorCode;
+    private final String locale;
 
     public McpBusinessException(McpErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+        this(errorCode, null, "zh");
     }
 
     public McpBusinessException(McpErrorCode errorCode, String detail) {
-        super(errorCode.getMessage() + ": " + detail);
+        this(errorCode, detail, "zh");
+    }
+
+    public McpBusinessException(McpErrorCode errorCode, String detail, String locale) {
+        super(errorCode.getMessage(locale) + (detail != null ? ": " + detail : ""));
         this.errorCode = errorCode;
+        this.locale = locale;
     }
 
     public McpErrorCode getErrorCode() {
         return errorCode;
+    }
+
+    public String getLocale() {
+        return locale;
     }
 }
