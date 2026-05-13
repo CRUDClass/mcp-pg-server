@@ -1,6 +1,7 @@
 # mcp-pg-server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[中文说明](README_zh.md)
 
 A PostgreSQL MCP (Model Context Protocol) server built with Spring Boot and Spring AI, exposing database CRUD operations as MCP tools for AI agents.
 
@@ -9,6 +10,7 @@ A PostgreSQL MCP (Model Context Protocol) server built with Spring Boot and Spri
 - **Full CRUD tools** — Query, Insert, Update, Delete, Batch, DDL, ListTables, DescribeTable
 - **Read/write support** — Unlike read-only MCP servers, this supports all DML and DDL operations
 - **SQL validation** — Built-in SQL injection prevention via JSqlParser
+- **Bilingual i18n** — Tool descriptions switch between Chinese and English via `TOOL_LOCALE` env var
 - **MCP STREAMABLE transport** — HTTP-based MCP protocol at `/api/mcp`
 - **Docker-ready** — Dockerfile and docker-compose.yml included
 
@@ -68,7 +70,7 @@ Add to your MCP client's configuration:
 | `update` | Update rows in a table |
 | `delete` | Delete rows from a table |
 | `batch` | Execute multiple SQL statements in a transaction |
-| `ddl` | Execute DDL statements (CREATE, ALTER, DROP) |
+| `ddl` | Execute DDL statements (CREATE TABLE, DROP TABLE) |
 | `listTables` | List all tables in the database |
 | `describeTable` | Describe a table's schema |
 
@@ -82,6 +84,7 @@ Add to your MCP client's configuration:
 | `PG_DATABASE` | `hot_topics` | Database name |
 | `PG_USERNAME` | `root` | Database user |
 | `PG_PASSWORD` | `123456` | Database password |
+| `TOOL_LOCALE` | `zh` | Tool description language (`zh` or `en`) |
 
 ## License
 
