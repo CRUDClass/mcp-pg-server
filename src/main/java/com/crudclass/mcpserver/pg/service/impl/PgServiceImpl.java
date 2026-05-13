@@ -223,7 +223,7 @@ public class PgServiceImpl implements PgService {
 
         boolean shouldExecute = confirm != null && confirm;
         // 快速检测 SQL 类型，只允许建表和删表
-        SqlType expectedType = SqlValidator.quickDetectType(sql);
+        SqlType expectedType = validator.quickDetectType(sql);
         if (expectedType != SqlType.CREATE_TABLE && expectedType != SqlType.DROP_TABLE) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
                     messages.ddlOnlySupport(), messages.isEnglish() ? "en" : "zh");
@@ -329,7 +329,7 @@ public class PgServiceImpl implements PgService {
      * 通过前缀匹配快速检测 SQL 类型，委托 {@link SqlValidator#quickDetectType(String)}。
      */
     private SqlType quickDetect(String sql) {
-        return SqlValidator.quickDetectType(sql);
+        return validator.quickDetectType(sql);
     }
 
     /**
