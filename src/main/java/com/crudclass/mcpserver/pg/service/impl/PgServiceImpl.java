@@ -226,7 +226,7 @@ public class PgServiceImpl implements PgService {
         SqlType expectedType = validator.quickDetectType(sql);
         if (expectedType != SqlType.CREATE_TABLE && expectedType != SqlType.DROP_TABLE) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                    messages.ddlOnlySupport(), messages.isEnglish() ? "en" : "zh");
+                    messages.ddlOnlySupport(), (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
 
         SqlParseResult parsed = validator.validate(sql, expectedType);
@@ -297,11 +297,11 @@ public class PgServiceImpl implements PgService {
         // ---- 表名校验 ----
         if (tableName == null || tableName.isBlank()) {
             throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
-                    messages.tableNameNotEmpty(), messages.isEnglish() ? "en" : "zh");
+                    messages.tableNameNotEmpty(), (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
         if (!TABLE_NAME_PATTERN.matcher(tableName.trim()).matches()) {
             throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
-                    messages.illegalTableName(tableName), messages.isEnglish() ? "en" : "zh");
+                    messages.illegalTableName(tableName), (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
 
         String name = tableName.trim();

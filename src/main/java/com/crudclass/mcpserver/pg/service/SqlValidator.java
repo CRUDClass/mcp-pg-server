@@ -82,7 +82,7 @@ public class SqlValidator {
             }
         }
         throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                messages.unsupportedType(), messages.isEnglish() ? "en" : "zh");
+                messages.unsupportedType(), (messages != null && messages.isEnglish()) ? "en" : "zh");
     }
 
     private final JdbcTemplate jdbcTemplate;
@@ -135,7 +135,7 @@ public class SqlValidator {
         }
         if (actualType != expectedType) {
             throw new McpBusinessException(McpErrorCode.TYPE_MISMATCH,
-                    "expected " + expectedType + " but got " + actualType, messages.isEnglish() ? "en" : "zh");
+                    "expected " + expectedType + " but got " + actualType, (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
 
         // 第4步：SELECT 专属安全检查
@@ -145,7 +145,7 @@ public class SqlValidator {
             // 正则兜底检测 JSqlParser 不支持的 PG 行锁扩展语法
             if (FOR_CLAUSE_PATTERN.matcher(sql).find()) {
                 throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                        "SELECT with FOR UPDATE / FOR SHARE is not allowed", messages.isEnglish() ? "en" : "zh");
+                        "SELECT with FOR UPDATE / FOR SHARE is not allowed", (messages != null && messages.isEnglish()) ? "en" : "zh");
             }
         }
 
@@ -182,7 +182,7 @@ public class SqlValidator {
         // 黑名单检查 —— 以下类型一律禁止
         if (statement instanceof Truncate || statement instanceof Alter || statement instanceof Grant || statement instanceof Execute || statement instanceof SetStatement || statement instanceof Block || statement instanceof Commit || statement instanceof RollbackStatement || statement instanceof SavepointStatement || statement instanceof DeclareStatement || statement instanceof ExplainStatement || statement instanceof UnsupportedStatement) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                    statement.getClass().getSimpleName(), messages.isEnglish() ? "en" : "zh");
+                    statement.getClass().getSimpleName(), (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
         return null;
     }
@@ -194,7 +194,7 @@ public class SqlValidator {
         // JSqlParser 能识别的 FOR UPDATE 子句
         if (select.getForClause() != null) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                    "SELECT FOR UPDATE/NOWAIT is not allowed", messages.isEnglish() ? "en" : "zh");
+                    "SELECT FOR UPDATE/NOWAIT is not allowed", (messages != null && messages.isEnglish()) ? "en" : "zh");
         }
         // 递归检查 WITH 列表中的 CTE 是否包含 DML
         List<WithItem> withItems = select.getWithItemsList();
