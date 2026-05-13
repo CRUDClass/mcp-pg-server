@@ -1,5 +1,6 @@
 package com.crudclass.mcpserver.pg.service.impl;
 
+import com.crudclass.mcpserver.pg.config.ToolMessages;
 import com.crudclass.mcpserver.pg.constants.SqlConsts;
 import com.crudclass.mcpserver.pg.enums.McpErrorCode;
 import com.crudclass.mcpserver.pg.enums.SqlType;
@@ -8,7 +9,6 @@ import com.crudclass.mcpserver.pg.service.PgService;
 import com.crudclass.mcpserver.pg.service.SqlExecutor;
 import com.crudclass.mcpserver.pg.service.SqlParseResult;
 import com.crudclass.mcpserver.pg.service.SqlValidator;
-import lombok.AllArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +29,20 @@ import java.util.regex.Pattern;
  * @date 2026/05/13
  **/
 @Service
-@AllArgsConstructor
 public class PgServiceImpl implements PgService {
 
     private final SqlValidator validator;
     private final JdbcTemplate jdbcTemplate;
     private final SqlExecutor executor;
+    private final ToolMessages messages;
+
+    public PgServiceImpl(SqlValidator validator, JdbcTemplate jdbcTemplate,
+                         SqlExecutor executor, ToolMessages messages) {
+        this.validator = validator;
+        this.jdbcTemplate = jdbcTemplate;
+        this.executor = executor;
+        this.messages = messages;
+    }
 
     private static final int DEFAULT_LIMIT = 100;
     private static final int MAX_LIMIT = 1000;
@@ -77,7 +85,7 @@ public class PgServiceImpl implements PgService {
             preview.put("success", true);
             preview.put("operations", types.stream().map(Enum::name).toList());
             preview.put("sqls", sqls);
-            preview.put("message", "预览模式，共 " + sqls.size() + " 条 SQL 校验通过，未实际执行。请重新调用并设置 confirm=true。");
+            preview.put("message", messages.batchPreviewMessage(sqls.size()));
             preview.put("actionRequired", "confirm");
             return preview;
         }
@@ -217,7 +225,8 @@ public class PgServiceImpl implements PgService {
         // 快速检测 SQL 类型，只允许建表和删表
         SqlType expectedType = SqlValidator.quickDetectType(sql);
         if (expectedType != SqlType.CREATE_TABLE && expectedType != SqlType.DROP_TABLE) {
-            throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION, "仅支持 CREATE TABLE 和 DROP TABLE");
+            throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
+                    messages.ddlOnlySupport(), messages.isEnglish() ? "en" : "zh");
         }
 
         SqlParseResult parsed = validator.validate(sql, expectedType);
@@ -287,11 +296,12 @@ public class PgServiceImpl implements PgService {
 
         // ---- 表名校验 ----
         if (tableName == null || tableName.isBlank()) {
-            throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED, "tableName 不能为空");
+            throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
+                    messages.tableNameNotEmpty(), messages.isEnglish() ? "en" : "zh");
         }
         if (!TABLE_NAME_PATTERN.matcher(tableName.trim()).matches()) {
             throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
-                    "非法表名: " + tableName);
+                    messages.illegalTableName(tableName), messages.isEnglish() ? "en" : "zh");
         }
 
         String name = tableName.trim();
