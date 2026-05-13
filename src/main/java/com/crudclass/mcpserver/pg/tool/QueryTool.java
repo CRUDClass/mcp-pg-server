@@ -15,6 +15,8 @@ import java.util.Map;
  * has no explicit LIMIT clause. The extra row is fetched to compute the
  * {@code hasMore} signal for iterative pagination. The effective limit is
  * capped at {@value #MAX_LIMIT} rows.
+ *
+ * @author CRUDClass
  */
 @Component
 @AllArgsConstructor

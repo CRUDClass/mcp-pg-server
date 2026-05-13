@@ -1,11 +1,16 @@
 package com.crudclass.mcpserver.pg.constants;
 
 /**
- * @author LiWenBo
+ * PostgreSQL 元数据查询的 SQL 常量集合。
+ * <p>
+ * 包含表列表查询、表注释查询、列信息查询、主键查询、索引查询、外键查询等 SQL。
+ *
+ * @author CRUDClass
  * @date 2026/05/13
  **/
 public class SqlConsts {
 
+    /** 查询指定表的列信息：列名、类型、是否可空、默认值、列注释 */
     public static final String SQL_COLUMNS = """
             SELECT c.column_name         AS name,
                    c.data_type            AS type,
@@ -20,6 +25,7 @@ public class SqlConsts {
             ORDER BY c.ordinal_position
             """;
 
+    /** 查询指定表的主键列名列表 */
     public static final String SQL_PRIMARY_KEYS = """
             SELECT kcu.column_name AS name
             FROM information_schema.table_constraints tc
@@ -32,6 +38,7 @@ public class SqlConsts {
             ORDER BY kcu.ordinal_position
             """;
 
+    /** 查询指定表的索引列表（排除主键索引）：索引名、是否唯一、索引列 */
     public static final String SQL_INDEXES = """
             SELECT i.relname       AS name,
                    idx.indisunique AS "unique",
@@ -49,6 +56,7 @@ public class SqlConsts {
             ORDER BY i.relname
             """;
 
+    /** 查询指定表的外键列表：约束名、源列、目标表、目标列 */
     public static final String SQL_FOREIGN_KEYS = """
             SELECT con.conname     AS name,
                    (SELECT array_to_string(
@@ -69,6 +77,7 @@ public class SqlConsts {
               AND con.contype = 'f'
             """;
 
+    /** 查询指定表的注释文本 */
     public static final String SQL_TABLE_COMMENT = """
             SELECT pg_catalog.obj_description(pc.oid, 'pg_class') AS "tableComment"
             FROM pg_catalog.pg_class pc
@@ -76,6 +85,7 @@ public class SqlConsts {
             WHERE pc.relname = ? AND ns.nspname = 'public'
             """;
 
+    /** 查询 public schema 下所有表名及注释 */
     public static final String SQL_TABLE_LIST = """
             SELECT t.tablename AS "tableName",
                    pg_catalog.obj_description(c.oid, 'pg_class') AS "comment"

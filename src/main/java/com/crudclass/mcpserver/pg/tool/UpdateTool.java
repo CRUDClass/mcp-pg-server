@@ -12,6 +12,8 @@ import java.util.Map;
  * MCP tool for {@code UPDATE} statements.
  * <p>
  * Follows the same two-phase preview/confirm pattern as {@link InsertTool}.
+ *
+ * @author CRUDClass
  */
 @Component
 @AllArgsConstructor

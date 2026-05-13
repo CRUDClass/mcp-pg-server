@@ -7,6 +7,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * MCP 工具：列出 public schema 下所有用户表及注释。
+ * <p>
+ * 直接委托 {@link PgService#listTables()} 查询系统目录表，
+ * 返回表名和表注释的列表。
+ *
+ * @author CRUDClass
+ */
 @Component
 @AllArgsConstructor
 public class ListTablesTool {

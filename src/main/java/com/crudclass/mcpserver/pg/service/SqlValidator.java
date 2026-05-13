@@ -27,25 +27,20 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * SQL validation engine that combines JSqlParser AST analysis with PostgreSQL
- * EXPLAIN verification and regex-based row-lock detection.
+ * SQL 验证引擎，结合 JSqlParser AST 分析、正则行锁检测和 PostgreSQL EXPLAIN 验证。
  *
- * <h3>Validation layers</h3>
+ * <h3>三层验证</h3>
  * <ol>
- *   <li><b>JSqlParser parse</b> — resolves statement type, detects
- *       multi-statements, rejects writeable CTEs and forbidden operations
- *       (TRUNCATE, ALTER, GRANT, EXECUTE, SET, BLOCK, COMMIT, etc.)
- *       at the parser level.</li>
- *   <li><b>Pattern check</b> — regex scan for {@code FOR UPDATE / FOR SHARE}
- *       clauses that JSqlParser 5.0 does not recognise (PG extension).</li>
- *   <li><b>EXPLAIN handshake</b> — non-fatal; sends {@code EXPLAIN &lt;sql&gt;}
- *       to PostgreSQL. A rejected EXPLAIN is logged as a warning but does
- *       not block the request.</li>
+ *   <li><b>JSqlParser 解析</b> — 确定语句类型、检测多语句、拒绝可写 CTE 和危险操作
+ *       （TRUNCATE、ALTER、GRANT、EXECUTE、SET、BLOCK、COMMIT 等）</li>
+ *   <li><b>正则检测</b> — 扫描 {@code FOR UPDATE / FOR SHARE} 子句，
+ *       JSqlParser 5.0 不识别这些 PG 扩展语法</li>
+ *   <li><b>EXPLAIN 握手</b> — 非致命性验证；发送 {@code EXPLAIN &lt;sql&gt;}
+ *       到 PostgreSQL，失败时记录警告但不阻断请求</li>
  * </ol>
  *
- * <p>Uses {@code instanceof} black-list matching against every known
- * dangerous JSqlParser {@link Statement} type, preventing pattern-bypass
- * attacks that plague text-based validation.
+ * <p>使用 {@code instanceof} 黑名单匹配所有已知的危险 JSqlParser
+ * {@link Statement} 类型，防止纯文本验证可能被绕过的安全问题。
  *
  * @author CRUDClass
  */
@@ -53,8 +48,10 @@ import java.util.regex.Pattern;
 public class SqlValidator {
 
     private static final Logger log = LoggerFactory.getLogger(SqlValidator.class);
+    // 匹配 FOR UPDATE / FOR SHARE 等行锁子句，JSqlParser 5.0 不识别这些 PG 扩展语法
     private static final Pattern FOR_CLAUSE_PATTERN = Pattern.compile("\\bFOR\\s+(NO\\s+KEY\\s+)?(UPDATE|SHARE|KEY\\s+SHARE)\\b", Pattern.CASE_INSENSITIVE);
 
+    /** 前缀 → SQL 类型快速映射表，用于提前判断语句类别 */
     private static final Map<String, SqlType> PREFIX_TYPE_MAP;
 
     static {
@@ -68,6 +65,14 @@ public class SqlValidator {
         PREFIX_TYPE_MAP.put("DROP TABLE", SqlType.DROP_TABLE);
     }
 
+    /**
+     * 通过 SQL 前缀快速检测语句类型，不依赖 JSqlParser。
+     * 用于在完整验证之前进行初步分类。
+     *
+     * @param sql 原始 SQL 字符串
+     * @return 对应的 SqlType
+     * @throws McpBusinessException 如果前缀不匹配任何已知类型
+     */
     public static SqlType quickDetectType(String sql) {
         String upper = sql.trim().toUpperCase().replaceAll("\\s+", " ");
         for (var entry : PREFIX_TYPE_MAP.entrySet()) {
@@ -85,19 +90,29 @@ public class SqlValidator {
     }
 
     /**
-     * Parses, classifies, and security-checks the given SQL.
+     * 完整的 SQL 验证流程。
+     * <p>
+     * 步骤：
+     * <ol>
+     *   <li>空值检查</li>
+     *   <li>JSqlParser 解析：单语句验证、类型检测</li>
+     *   <li>类型匹配校验</li>
+     *   <li>SELECT 安全检查：行锁检测 + 可写 CTE 递归遍历</li>
+     *   <li>EXPLAIN 握手（非致命）</li>
+     * </ol>
      *
-     * @param sql          raw SQL string from the MCP client
-     * @param expectedType the SQL type the calling tool expects
-     * @return a {@link SqlParseResult} carrying the original SQL, AST node, and
-     * confirmed type
-     * @throws McpBusinessException on any validation failure
+     * @param sql          原始 SQL 字符串
+     * @param expectedType 调用方期望的 SQL 类型
+     * @return 包含原始 SQL、AST 节点和确认类型的 {@link SqlParseResult}
+     * @throws McpBusinessException 验证失败时抛出
      */
     public SqlParseResult validate(String sql, SqlType expectedType) {
+        // 第1步：空值检查
         if (sql == null || sql.isBlank()) {
             throw new McpBusinessException(McpErrorCode.SQL_EMPTY);
         }
 
+        // 第2步：JSqlParser 解析 —— 只允许单条语句
         Statement statement;
         try {
             Statements statements = CCJSqlParserUtil.parseStatements(sql);
@@ -109,6 +124,7 @@ public class SqlValidator {
             throw new McpBusinessException(McpErrorCode.SQL_PARSE_ERROR, e.getMessage());
         }
 
+        // 第3步：检测 SQL 类型并与期望类型匹配
         SqlType actualType = detectType(statement);
         if (actualType == null) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION);
@@ -117,22 +133,26 @@ public class SqlValidator {
             throw new McpBusinessException(McpErrorCode.TYPE_MISMATCH, "expected " + expectedType + " but got " + actualType);
         }
 
+        // 第4步：SELECT 专属安全检查
         if (statement instanceof Select select) {
+            // JSqlParser 层面的 FOR UPDATE 检测
             checkForbiddenInSelect(select);
+            // 正则兜底检测 JSqlParser 不支持的 PG 行锁扩展语法
             if (FOR_CLAUSE_PATTERN.matcher(sql).find()) {
                 throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION, "SELECT with FOR UPDATE / FOR SHARE is not allowed");
             }
         }
 
+        // 第5步：EXPLAIN 握手 —— 非致命，失败只记录警告
         verifyExplain(sql);
 
         return new SqlParseResult(sql, statement, actualType);
     }
 
     /**
-     * Maps a parsed JSqlParser {@link Statement} to a {@link SqlType}.
-     * Returns {@code null} for unrecognised types; throws
-     * {@link McpBusinessException} for black-listed dangerous operations.
+     * 将 JSqlParser 解析后的 {@link Statement} 映射到 {@link SqlType}。
+     * <p>
+     * 对未知类型返回 null；对列入黑名单的危险操作直接抛出异常。
      */
     private SqlType detectType(Statement statement) {
         if (statement instanceof Select) {
@@ -153,25 +173,35 @@ public class SqlValidator {
         if (statement instanceof Drop) {
             return SqlType.DROP_TABLE;
         }
+        // 黑名单检查 —— 以下类型一律禁止
         if (statement instanceof Truncate || statement instanceof Alter || statement instanceof Grant || statement instanceof Execute || statement instanceof SetStatement || statement instanceof Block || statement instanceof Commit || statement instanceof RollbackStatement || statement instanceof SavepointStatement || statement instanceof DeclareStatement || statement instanceof ExplainStatement || statement instanceof UnsupportedStatement) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION, statement.getClass().getSimpleName());
         }
         return null;
     }
 
+    /**
+     * 检查 SELECT 中的禁止项：FOR UPDATE 子句和可写 CTE。
+     */
     private void checkForbiddenInSelect(Select select) {
+        // JSqlParser 能识别的 FOR UPDATE 子句
         if (select.getForClause() != null) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION, "SELECT FOR UPDATE/NOWAIT is not allowed");
         }
+        // 递归检查 WITH 列表中的 CTE 是否包含 DML
         List<WithItem> withItems = select.getWithItemsList();
         if (withItems != null) {
             for (WithItem item : withItems) {
                 checkSelectBodyForDml(item);
             }
         }
+        // 递归检查 SELECT 主查询体
         checkSelectBodyForDml(select);
     }
 
+    /**
+     * 根据 Select 的具体子类型分派到对应的检查方法。
+     */
     private void checkSelectBodyForDml(Select select) {
         if (select instanceof PlainSelect ps) {
             checkPlainSelect(ps);
@@ -182,6 +212,9 @@ public class SqlValidator {
         }
     }
 
+    /**
+     * 遍历 PlainSelect 的 FROM 项和 JOIN 项，递归检查子查询。
+     */
     private void checkPlainSelect(PlainSelect ps) {
         checkFromItem(ps.getFromItem());
         List<Join> joins = ps.getJoins();
@@ -192,18 +225,27 @@ public class SqlValidator {
         }
     }
 
+    /**
+     * 如果 FROM 项是子查询，递归进入检查。
+     */
     private void checkFromItem(FromItem fromItem) {
         if (fromItem instanceof ParenthesedSelect pss) {
             checkSelectBodyForDml(pss);
         }
     }
 
+    /**
+     * 遍历 UNION/INTERSECT/EXCEPT 组合中的每个 SELECT。
+     */
     private void checkSetOperationList(SetOperationList sol) {
         for (Select sb : sol.getSelects()) {
             checkSelectBodyForDml(sb);
         }
     }
 
+    /**
+     * 递归进入括号包裹的子查询。
+     */
     private void checkParenthesedSelect(ParenthesedSelect pss) {
         Select inner = pss.getSelect();
         if (inner != null) {
@@ -211,6 +253,13 @@ public class SqlValidator {
         }
     }
 
+    /**
+     * 非致命性 EXPLAIN 验证。
+     * <p>
+     * 向 PostgreSQL 发送 {@code EXPLAIN <sql>} 命令，
+     * 如果 DataSource 不可用（jdbcTemplate 为 null）则跳过。
+     * 执行失败只记录 WARNING 日志，不阻断请求。
+     */
     private void verifyExplain(String sql) {
         if (jdbcTemplate == null) {
             return;

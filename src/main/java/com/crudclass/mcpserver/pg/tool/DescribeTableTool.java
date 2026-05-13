@@ -8,6 +8,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * MCP 工具：查询某张表的完整元数据。
+ * <p>
+ * 返回内容包括：列信息（含主键标记）、主键列表、索引列表、
+ * 外键列表、表注释。委托 {@link PgService#describeTable(String)} 执行。
+ *
+ * @author CRUDClass
+ */
 @Component
 @AllArgsConstructor
 public class DescribeTableTool {

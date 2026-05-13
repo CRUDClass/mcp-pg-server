@@ -17,22 +17,19 @@ import java.time.Duration;
 import java.util.*;
 
 /**
- * JDBC executor with per-statement timeout, idempotency caching, and audit
- * logging for write operations.
+ * JDBC 执行器，提供每语句超时控制、幂等性缓存和写操作审计日志。
  *
- * <h3>Key behaviours</h3>
+ * <h3>核心功能</h3>
  * <ul>
- *   <li><b>Timeout</b> — {@link JdbcTemplate#setQueryTimeout(int) 30 s} on
- *       every statement.</li>
- *   <li><b>Idempotency</b> — SHA-256 of the SQL text used as cache key in a
- *       Caffeine LRU cache (5 min TTL, 1 000 entries). Replayed writes return
- *       the cached result and log an {@code IDEMPOTENT_REPLAY} audit entry.</li>
- *   <li><b>Audit</b> — every non-SELECT operation writes a structured log line
- *       to the {@code AUDIT} logger (SLF4J). PostgreSQL {@code log_statement}
- *       complements this at the database layer.</li>
- *   <li><b>Error propagation</b> — JDBC exceptions are re-wrapped as
- *       {@link McpBusinessException}({@link McpErrorCode#EXECUTION_FAILED})
- *       instead of being silently caught.</li>
+ *   <li><b>超时</b> — 每条语句设置 {@link JdbcTemplate#setQueryTimeout(int) 30秒} 查询超时</li>
+ *   <li><b>幂等性</b> — 以 SQL 文本的 SHA-256 哈希作为缓存键，
+ *       使用 Caffeine LRU 缓存（5分钟 TTL，1000条上限）。重复执行写入操作时
+ *       直接返回缓存结果，并记录 {@code IDEMPOTENT_REPLAY} 审计日志</li>
+ *   <li><b>审计</b> — 每个非 SELECT 操作写入结构化日志到 {@code AUDIT} 日志器，
+ *       PostgreSQL 端的 {@code log_statement} 在数据库层补充此功能</li>
+ *   <li><b>错误传播</b> — JDBC 异常统一包装为
+ *       {@link McpBusinessException}({@link McpErrorCode#EXECUTION_FAILED})，
+ *       避免静默吞掉异常</li>
  * </ul>
  * @author CRUDClass
  */
@@ -50,6 +47,7 @@ public class SqlExecutor {
 
     public SqlExecutor(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+        // 初始化 Caffeine LRU 缓存：5分钟过期，最大1000条
         this.idempotencyCache = Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(5))
                 .maximumSize(1000)
@@ -57,22 +55,22 @@ public class SqlExecutor {
     }
 
     /**
-     * Executes the validated SQL with timeout enforcement, idempotency check,
-     * and audit logging.
+     * 执行已验证的 SQL，包含超时控制、幂等性检查和审计日志。
      *
-     * @param parseResult the pre-validated parse result from {@link SqlValidator}
-     * @return a map with keys {@code success, operation, sql, message} and
-     *         operation-specific metrics
-     * @throws McpBusinessException if the JDBC call fails
+     * @param parseResult 来自 {@link SqlValidator} 的预校验解析结果
+     * @return 包含 {@code success, operation, sql, message} 和操作相关指标的结果 Map
+     * @throws McpBusinessException JDBC 调用失败时抛出
      */
     public Map<String, Object> execute(SqlParseResult parseResult) {
         String sql = parseResult.originalSql();
         SqlType sqlType = parseResult.sqlType();
 
+        // 非 SELECT 操作：先检查幂等缓存
         if (sqlType != SqlType.SELECT) {
             String idempotencyKey = sha256(sql);
             Map<String, Object> cached = idempotencyCache.getIfPresent(idempotencyKey);
             if (cached != null) {
+                // 命中缓存，直接返回，记录幂等重放审计
                 auditLog.info("AUDIT | type=IDEMPOTENT_REPLAY | operation={} | sql={}", sqlType, sql);
                 return cached;
             }
@@ -84,11 +82,13 @@ public class SqlExecutor {
         try {
             Map<String, Object> result = doExecute(sql, sqlType, start);
 
+            // 非 SELECT 操作：存入幂等缓存
             if (sqlType != SqlType.SELECT) {
                 String idempotencyKey = sha256(sql);
                 idempotencyCache.put(idempotencyKey, result);
             }
 
+            // 非 SELECT 操作：记录审计日志
             if (sqlType != SqlType.SELECT) {
                 auditLog.info("AUDIT | type=EXECUTE | operation={} | sql={} | elapsedMs={}",
                         sqlType, sql, System.currentTimeMillis() - start);
@@ -105,11 +105,11 @@ public class SqlExecutor {
     }
 
     /**
-     * Builds a preview response without executing any SQL.
-     * Used by write tools on their first (unconfirmed) invocation.
+     * 构建预览响应，不实际执行 SQL。
+     * 供写工具在首次（未确认）调用时使用。
      *
-     * @param parseResult the pre-validated parse result
-     * @return a map with {@code success:true} and {@code actionRequired:"confirm"}
+     * @param parseResult 预校验的解析结果
+     * @return 包含 {@code success:true} 和 {@code actionRequired:"confirm"} 的结果 Map
      */
     public Map<String, Object> preview(SqlParseResult parseResult) {
         String sql = parseResult.originalSql();
@@ -122,6 +122,13 @@ public class SqlExecutor {
         return preview;
     }
 
+    /**
+     * 根据 SQL 类型分派到对应的 JDBC 执行方法。
+     * <p>
+     * SELECT 使用 {@link JdbcTemplate#queryForList}，
+     * INSERT/UPDATE/DELETE 使用 {@link JdbcTemplate#update}，
+     * CREATE TABLE/DROP TABLE 使用 {@link JdbcTemplate#execute}。
+     */
     private Map<String, Object> doExecute(String sql, SqlType sqlType, long start) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
@@ -169,6 +176,10 @@ public class SqlExecutor {
         return result;
     }
 
+    /**
+     * 计算字符串的 SHA-256 哈希（Base64 编码），用于幂等缓存键。
+     * 如果 SHA-256 不可用，降级使用 hashCode 的十六进制表示。
+     */
     private String sha256(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -179,6 +190,12 @@ public class SqlExecutor {
         }
     }
 
+    /**
+     * 从 CREATE TABLE / DROP TABLE 语句中提取表名。
+     * <p>
+     * 通过定位关键字位置，截取后续第一个以空格分隔的标识符作为表名，
+     * 并去除尾部的分号、逗号、括号等字符。
+     */
     private String extractTableName(String sql) {
         String upper = sql.toUpperCase();
         int idx = upper.indexOf("CREATE TABLE");
@@ -188,6 +205,7 @@ public class SqlExecutor {
         if (idx == -1) {
             return UNKNOWN_TABLE;
         }
+        // 跳过关键字（12个字符），取其后第一个以空白分隔的 token 作为表名
         String after = sql.substring(idx + 12).trim();
         return after.split("\\s+")[0].replaceAll("[;,(].*$", "");
     }

@@ -21,6 +21,8 @@ import java.util.Map;
  * <p>
  * Uses a local {@code quickDetect} helper to determine the expected SQL type
  * for each statement before the more thorough JSqlParser validation.
+ *
+ * @author CRUDClass
  */
 @Component
 @AllArgsConstructor

@@ -14,6 +14,8 @@ import java.util.Map;
  * Two-phase execution: the first call (without {@code confirm}) returns a
  * structured preview with {@code actionRequired:"confirm"}. The LLM must
  * set {@code confirm=true} on the second call to actually execute the SQL.
+ *
+ * @author CRUDClass
  */
 @Component
 @AllArgsConstructor

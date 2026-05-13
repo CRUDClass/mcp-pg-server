@@ -15,6 +15,8 @@ import java.util.Map;
  * Determines the expected SQL type via a simple prefix check before delegating
  * full validation to {@link SqlValidator}. Follows the same two-phase
  * preview/confirm pattern as other write tools.
+ *
+ * @author CRUDClass
  */
 @Component
 @AllArgsConstructor

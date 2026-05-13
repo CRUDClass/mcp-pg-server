@@ -27,6 +27,12 @@ public class ExceptionMapper {
 
     private static final Logger log = LoggerFactory.getLogger(ExceptionMapper.class);
 
+    /**
+     * 处理 {@link McpBusinessException} 业务异常，返回 HTTP 400。
+     *
+     * @param ex 业务异常
+     * @return 含 success=false、errorCode、message 的 JSON 响应
+     */
     @ExceptionHandler(McpBusinessException.class)
     public ResponseEntity<Map<String, Object>> handleMcpBusiness(McpBusinessException ex) {
         if (log.isErrorEnabled()) {
@@ -39,6 +45,11 @@ public class ExceptionMapper {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /**
+     * 处理未知异常，返回 HTTP 500。
+     * <p>
+     * 对客户端断开或 SSE 传输场景做特殊处理，避免向已断开连接写响应。
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnknown(Exception ex, HttpServletRequest request) {
         if (ex instanceof AsyncRequestNotUsableException || isSseRequest(request)) {
@@ -53,6 +64,9 @@ public class ExceptionMapper {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
+    /**
+     * 判断当前请求是否为 SSE（Server-Sent Events）传输。
+     */
     private boolean isSseRequest(HttpServletRequest request) {
         String accept = request.getHeader("Accept");
         return accept != null && accept.contains("text/event-stream");

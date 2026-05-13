@@ -4,11 +4,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Locale-aware message provider for MCP tool descriptions and parameter hints.
+ * 国际化消息提供者，根据配置动态切换 MCP 工具描述和参数提示的语言。
  * <p>
- * Reads {@code crudclass.mcp.tool-locale} from application configuration
- * (default {@code zh}). When set to {@code en}, all descriptions switch to
- * English for compatibility with non-Chinese LLMs.
+ * 从配置读取 {@code crudclass.mcp.tool-locale}（默认 {@code zh}），
+ * 设置为 {@code en} 时所有描述切换为英文，适配非中文 LLM。
+ *
+ * @author CRUDClass
  */
 @Component
 public class ToolMessages {
@@ -16,9 +17,16 @@ public class ToolMessages {
     @Value("${crudclass.mcp.tool-locale:zh}")
     private String locale;
 
+    /**
+     * 是否启用英文模式。
+     *
+     * @return 如果 locale 为 "en" 返回 true
+     */
     public boolean isEnglish() {
         return "en".equalsIgnoreCase(locale);
     }
+
+    // ---- 查询工具 ----
 
     public String queryDescription() {
         return isEnglish()
@@ -43,6 +51,8 @@ public class ToolMessages {
             ? "Number of rows to skip (default 0)"
             : "跳过的行数 (默认 0)";
     }
+
+    // ---- 写入工具 ----
 
     public String insertDescription() {
         return isEnglish()
@@ -73,6 +83,8 @@ public class ToolMessages {
             ? "Execute multiple SQL statements in a single transaction. Returns preview on first call; set confirm=true to execute."
             : "在单个事务中执行多条 SQL。首次返回预览，设置 confirm=true 确认执行。";
     }
+
+    // ---- 通用参数 ----
 
     public String confirmParamDesc() {
         return isEnglish()

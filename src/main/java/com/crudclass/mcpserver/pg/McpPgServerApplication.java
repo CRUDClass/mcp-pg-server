@@ -17,6 +17,8 @@ import org.springframework.context.annotation.Bean;
  * Tool callbacks are registered explicitly via {@link MethodToolCallbackProvider}
  * because the Spring AI 1.1.2 annotation scanner does not auto-detect them in
  * the WebMVC MCP server configuration.
+ *
+ * @author CRUDClass
  */
 @SpringBootApplication
 public class McpPgServerApplication {
