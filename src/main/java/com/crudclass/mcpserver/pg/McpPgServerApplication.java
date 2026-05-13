@@ -1,8 +1,8 @@
 package com.crudclass.mcpserver.pg;
 
+import com.crudclass.mcpserver.pg.config.ToolMessages;
 import com.crudclass.mcpserver.pg.tool.*;
 import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -29,14 +29,14 @@ public class McpPgServerApplication {
 
     @Bean
     public ToolCallbackProvider toolCallbackProvider(
+            ToolMessages messages,
             QueryTool queryTool, InsertTool insertTool,
             UpdateTool updateTool, DeleteTool deleteTool,
             DdlTool ddlTool, BatchTool batchTool,
             ListTablesTool listTablesTool, DescribeTableTool describeTableTool) {
-        return MethodToolCallbackProvider.builder()
-                .toolObjects(queryTool, insertTool, updateTool,
-                        deleteTool, ddlTool, batchTool,
-                        listTablesTool, describeTableTool)
-                .build();
+        return new LocaleAwareToolCallbackProvider(messages,
+                queryTool, insertTool, updateTool,
+                deleteTool, ddlTool, batchTool,
+                listTablesTool, describeTableTool);
     }
 }
