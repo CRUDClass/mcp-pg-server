@@ -10,6 +10,10 @@ package com.crudclass.mcpserver.pg.constants;
  **/
 public class SqlConsts {
 
+    private SqlConsts() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /** 查询指定表的列信息：列名、类型、是否可空、默认值、列注释 */
     public static final String SQL_COLUMNS = """
             SELECT c.column_name         AS name,

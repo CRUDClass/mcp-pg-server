@@ -100,10 +100,10 @@ public class SqlExecutor {
             return result;
         } catch (QueryTimeoutException e) {
             throw new McpBusinessException(McpErrorCode.QUERY_TIMEOUT,
-                    sqlType + ": " + e.getMessage(), (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    sqlType + ": " + e.getMessage(), messages.isEnglish() ? "en" : "zh");
         } catch (Exception e) {
             throw new McpBusinessException(McpErrorCode.EXECUTION_FAILED,
-                    sqlType + ": " + e.getMessage(), (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    sqlType + ": " + e.getMessage(), messages.isEnglish() ? "en" : "zh");
         }
     }
 
@@ -172,7 +172,7 @@ public class SqlExecutor {
                 result.put(KEY_MESSAGE, messages.dropSuccess());
             }
             default -> throw new McpBusinessException(McpErrorCode.EXECUTION_FAILED,
-                    messages.unsupportedType() + ": " + sqlType, (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    messages.unsupportedType() + ": " + sqlType, messages.isEnglish() ? "en" : "zh");
         }
 
         result.put("executionTimeMs", System.currentTimeMillis() - start);

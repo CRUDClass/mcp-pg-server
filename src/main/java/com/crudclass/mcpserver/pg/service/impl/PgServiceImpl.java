@@ -49,6 +49,7 @@ public class PgServiceImpl implements PgService {
 
     private static final Pattern TABLE_NAME_PATTERN = Pattern.compile("^\\w+$");
     private static final String KEY_TABLE_COMMENT = "tableComment";
+    private static final String KEY_SUCCESS = "success";
 
 
     /**
@@ -82,7 +83,7 @@ public class PgServiceImpl implements PgService {
         // ---- 预览模式：校验通过但未实际执行 ----
         if (!shouldExecute) {
             Map<String, Object> preview = new LinkedHashMap<>();
-            preview.put("success", true);
+            preview.put(KEY_SUCCESS, true);
             preview.put("operations", types.stream().map(Enum::name).toList());
             preview.put("sqls", sqls);
             preview.put("message", messages.batchPreviewMessage(sqls.size()));
@@ -101,7 +102,7 @@ public class PgServiceImpl implements PgService {
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
+        result.put(KEY_SUCCESS, true);
         result.put("results", results);
         result.put("totalCount", results.size());
         result.put("executionTimeMs", System.currentTimeMillis() - start);
@@ -226,7 +227,7 @@ public class PgServiceImpl implements PgService {
         SqlType expectedType = validator.quickDetectType(sql);
         if (expectedType != SqlType.CREATE_TABLE && expectedType != SqlType.DROP_TABLE) {
             throw new McpBusinessException(McpErrorCode.FORBIDDEN_OPERATION,
-                    messages.ddlOnlySupport(), (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    messages.ddlOnlySupport(), messages.isEnglish() ? "en" : "zh");
         }
 
         SqlParseResult parsed = validator.validate(sql, expectedType);
@@ -268,7 +269,7 @@ public class PgServiceImpl implements PgService {
     public Map<String, Object> listTables() {
         List<Map<String, Object>> tables = jdbcTemplate.queryForList(SqlConsts.SQL_TABLE_LIST);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
+        result.put(KEY_SUCCESS, true);
         result.put("tables", tables);
         result.put("count", tables.size());
         return result;
@@ -297,11 +298,11 @@ public class PgServiceImpl implements PgService {
         // ---- 表名校验 ----
         if (tableName == null || tableName.isBlank()) {
             throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
-                    messages.tableNameNotEmpty(), (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    messages.tableNameNotEmpty(), messages.isEnglish() ? "en" : "zh");
         }
         if (!TABLE_NAME_PATTERN.matcher(tableName.trim()).matches()) {
             throw new McpBusinessException(McpErrorCode.VALIDATION_FAILED,
-                    messages.illegalTableName(tableName), (messages != null && messages.isEnglish()) ? "en" : "zh");
+                    messages.illegalTableName(tableName), messages.isEnglish() ? "en" : "zh");
         }
 
         String name = tableName.trim();
@@ -315,7 +316,7 @@ public class PgServiceImpl implements PgService {
 
         // ---- 组装结果 ----
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
+        result.put(KEY_SUCCESS, true);
         result.put("tableName", name);
         result.put(KEY_TABLE_COMMENT, tableComment);
         result.put("columns", columns);

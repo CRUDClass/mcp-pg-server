@@ -146,6 +146,8 @@ public class ToolMessages {
 
     // ---- 运行时消息 ----
 
+    private static final String ROW_AFFECTED = " row(s) affected";
+
     public String previewMessage() {
         return isEnglish()
             ? "Preview mode — SQL validated but not executed. Call again with confirm=true to execute."
@@ -166,19 +168,19 @@ public class ToolMessages {
 
     public String insertSuccess(int affected) {
         return isEnglish()
-            ? "Insert successful, " + affected + " row(s) affected"
+            ? "Insert successful, " + affected + ROW_AFFECTED
             : "插入成功，影响 " + affected + " 行";
     }
 
     public String updateSuccess(int affected) {
         return isEnglish()
-            ? "Update successful, " + affected + " row(s) affected"
+            ? "Update successful, " + affected + ROW_AFFECTED
             : "更新成功，影响 " + affected + " 行";
     }
 
     public String deleteSuccess(int affected) {
         return isEnglish()
-            ? "Delete successful, " + affected + " row(s) affected"
+            ? "Delete successful, " + affected + ROW_AFFECTED
             : "删除成功，影响 " + affected + " 行";
     }
 

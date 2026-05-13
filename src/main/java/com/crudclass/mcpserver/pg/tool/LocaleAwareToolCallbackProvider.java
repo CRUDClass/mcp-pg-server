@@ -26,35 +26,42 @@ public class LocaleAwareToolCallbackProvider implements ToolCallbackProvider {
     private final ToolMessages messages;
     private final MethodToolCallbackProvider delegate;
 
+    private static final String K_SQL = "sql";
+    private static final String K_CONFIRM = "confirm";
+    private static final String T_STRING = "string";
+    private static final String T_INTEGER = "integer";
+    private static final String T_BOOLEAN = "boolean";
+    private static final String T_ARRAY = "array";
+
     private static final Map<String, List<ParamDef>> PARAMS = Map.of(
         "executeQuery", List.of(
-            new ParamDef("sql", "string", true),
-            new ParamDef("limit", "integer", false),
-            new ParamDef("offset", "integer", false)
+            new ParamDef(K_SQL, T_STRING, true),
+            new ParamDef("limit", T_INTEGER, false),
+            new ParamDef("offset", T_INTEGER, false)
         ),
         "executeInsert", List.of(
-            new ParamDef("sql", "string", true),
-            new ParamDef("confirm", "boolean", false)
+            new ParamDef(K_SQL, T_STRING, true),
+            new ParamDef(K_CONFIRM, T_BOOLEAN, false)
         ),
         "executeUpdate", List.of(
-            new ParamDef("sql", "string", true),
-            new ParamDef("confirm", "boolean", false)
+            new ParamDef(K_SQL, T_STRING, true),
+            new ParamDef(K_CONFIRM, T_BOOLEAN, false)
         ),
         "executeDelete", List.of(
-            new ParamDef("sql", "string", true),
-            new ParamDef("confirm", "boolean", false)
+            new ParamDef(K_SQL, T_STRING, true),
+            new ParamDef(K_CONFIRM, T_BOOLEAN, false)
         ),
         "executeDdl", List.of(
-            new ParamDef("sql", "string", true),
-            new ParamDef("confirm", "boolean", false)
+            new ParamDef(K_SQL, T_STRING, true),
+            new ParamDef(K_CONFIRM, T_BOOLEAN, false)
         ),
         "executeBatch", List.of(
-            new ParamDef("sqls", "array", true),
-            new ParamDef("confirm", "boolean", false)
+            new ParamDef("sqls", T_ARRAY, true),
+            new ParamDef(K_CONFIRM, T_BOOLEAN, false)
         ),
         "listTables", List.of(),
         "describeTable", List.of(
-            new ParamDef("tableName", "string", true)
+            new ParamDef("tableName", T_STRING, true)
         )
     );
 
@@ -120,29 +127,29 @@ public class LocaleAwareToolCallbackProvider implements ToolCallbackProvider {
     private Map<String, String> paramDescriptionsFor(String toolName) {
         return switch (toolName) {
             case "executeQuery" -> Map.of(
-                "sql", messages.sqlParamDesc(),
+                K_SQL, messages.sqlParamDesc(),
                 "limit", messages.limitParamDesc(),
                 "offset", messages.offsetParamDesc()
             );
             case "executeInsert" -> Map.of(
-                "sql", messages.insertSqlParamDesc(),
-                "confirm", messages.confirmParamDesc()
+                K_SQL, messages.insertSqlParamDesc(),
+                K_CONFIRM, messages.confirmParamDesc()
             );
             case "executeUpdate" -> Map.of(
-                "sql", messages.updateSqlParamDesc(),
-                "confirm", messages.confirmParamDesc()
+                K_SQL, messages.updateSqlParamDesc(),
+                K_CONFIRM, messages.confirmParamDesc()
             );
             case "executeDelete" -> Map.of(
-                "sql", messages.deleteSqlParamDesc(),
-                "confirm", messages.confirmParamDesc()
+                K_SQL, messages.deleteSqlParamDesc(),
+                K_CONFIRM, messages.confirmParamDesc()
             );
             case "executeDdl" -> Map.of(
-                "sql", messages.ddlSqlParamDesc(),
-                "confirm", messages.confirmParamDesc()
+                K_SQL, messages.ddlSqlParamDesc(),
+                K_CONFIRM, messages.confirmParamDesc()
             );
             case "executeBatch" -> Map.of(
                 "sqls", messages.sqlsParamDesc(),
-                "confirm", messages.confirmParamDesc()
+                K_CONFIRM, messages.confirmParamDesc()
             );
             case "describeTable" -> Map.of(
                 "tableName", messages.tableNameParamDesc()
@@ -154,6 +161,10 @@ public class LocaleAwareToolCallbackProvider implements ToolCallbackProvider {
     record ParamDef(String name, String type, boolean required) {}
 
     static final class SchemaBuilder {
+
+        private SchemaBuilder() {
+            throw new UnsupportedOperationException("Utility class");
+        }
 
         static String build(List<ParamDef> params, Map<String, String> descriptions) {
             StringBuilder sb = new StringBuilder();
