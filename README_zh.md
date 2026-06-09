@@ -47,6 +47,45 @@ java -jar target/pg-server-1.0.0.jar
 docker compose up -d --build
 ```
 
+### Docker（STDIO 模式）
+
+适用于通过标准输入/输出通信的 MCP 客户端（如 Claude Desktop）：
+
+```bash
+docker run -i --rm --init --pull=always \
+  -e SPRING_PROFILES_ACTIVE=stdio \
+  -e PG_HOST=your-host \
+  -e PG_PORT=5432 \
+  -e PG_DATABASE=your-db \
+  -e PG_USERNAME=your-user \
+  -e PG_PASSWORD=your-password \
+  mcp-pg-server:latest
+```
+
+**MCP 客户端配置：**
+
+```json
+{
+  "mcpServers": {
+    "pg-server": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--init", "--pull=always",
+        "-e", "SPRING_PROFILES_ACTIVE=stdio",
+        "-e", "PG_HOST",
+        "-e", "PG_PORT",
+        "-e", "PG_DATABASE",
+        "-e", "PG_USERNAME",
+        "-e", "PG_PASSWORD",
+        "mcp-pg-server:latest"
+      ]
+    }
+  }
+}
+```
+
+> `--pull=always` 确保每次拉取最新镜像，使用本地构建的镜像时可省略。
+
 ### MCP 客户端配置
 
 在 MCP 客户端配置中添加：
@@ -85,6 +124,7 @@ docker compose up -d --build
 | `PG_USERNAME` | `root` | 数据库用户 |
 | `PG_PASSWORD` | `123456` | 数据库密码 |
 | `TOOL_LOCALE` | `zh` | 工具描述语言（`zh` 中文 / `en` 英文） |
+| `SPRING_PROFILES_ACTIVE` | (未设置) | 设为 `stdio` 启用 STDIO 传输模式 |
 
 ## 贡献
 
