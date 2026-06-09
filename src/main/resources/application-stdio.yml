@@ -2,6 +2,8 @@
 # Activate with: SPRING_PROFILES_ACTIVE=stdio
 #
 # Database connection and MCP tool config inherit from application.yml.
+# HTTP/STREAMABLE settings (protocol, endpoint) are automatically
+# ignored at runtime when STDIO is enabled.
 
 spring:
   ai:
