@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SqlValidatorTest {
 
-    private final SqlValidator validator = new SqlValidator(null);
+    private final SqlValidator validator = new SqlValidator(null, null);
 
     /** 合法 SELECT 应通过验证 */
     @Test

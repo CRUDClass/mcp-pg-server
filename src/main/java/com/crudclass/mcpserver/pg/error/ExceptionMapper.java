@@ -1,5 +1,6 @@
 package com.crudclass.mcpserver.pg.error;
 
+import com.crudclass.mcpserver.pg.config.ToolMessages;
 import com.crudclass.mcpserver.pg.enums.McpErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -26,6 +27,12 @@ import java.util.Map;
 public class ExceptionMapper {
 
     private static final Logger log = LoggerFactory.getLogger(ExceptionMapper.class);
+
+    private final ToolMessages messages;
+
+    public ExceptionMapper(ToolMessages messages) {
+        this.messages = messages;
+    }
 
     /**
      * 处理 {@link McpBusinessException} 业务异常，返回 HTTP 400。
@@ -60,7 +67,7 @@ public class ExceptionMapper {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", false);
         body.put("errorCode", McpErrorCode.EXECUTION_FAILED.name());
-        body.put("message", "Internal error: " + ex.getMessage());
+        body.put("message", messages.isEnglish() ? "Internal error: " + ex.getMessage() : "内部错误: " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 

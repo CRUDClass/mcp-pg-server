@@ -1,5 +1,6 @@
 package com.crudclass.mcpserver.pg.service;
 
+import com.crudclass.mcpserver.pg.config.ToolMessages;
 import com.crudclass.mcpserver.pg.enums.McpErrorCode;
 import com.crudclass.mcpserver.pg.enums.SqlType;
 import com.crudclass.mcpserver.pg.error.McpBusinessException;
@@ -44,9 +45,11 @@ public class SqlExecutor {
 
     private final JdbcTemplate jdbcTemplate;
     private final Cache<String, Map<String, Object>> idempotencyCache;
+    private final ToolMessages messages;
 
-    public SqlExecutor(JdbcTemplate jdbcTemplate) {
+    public SqlExecutor(JdbcTemplate jdbcTemplate, ToolMessages messages) {
         this.jdbcTemplate = jdbcTemplate;
+        this.messages = messages;
         // 初始化 Caffeine LRU 缓存：5分钟过期，最大1000条
         this.idempotencyCache = Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(5))
@@ -97,10 +100,10 @@ public class SqlExecutor {
             return result;
         } catch (QueryTimeoutException e) {
             throw new McpBusinessException(McpErrorCode.QUERY_TIMEOUT,
-                    sqlType + ": " + e.getMessage());
+                    sqlType + ": " + e.getMessage(), messages.isEnglish() ? "en" : "zh");
         } catch (Exception e) {
             throw new McpBusinessException(McpErrorCode.EXECUTION_FAILED,
-                    sqlType + ": " + e.getMessage());
+                    sqlType + ": " + e.getMessage(), messages.isEnglish() ? "en" : "zh");
         }
     }
 
@@ -117,7 +120,7 @@ public class SqlExecutor {
         preview.put("success", true);
         preview.put("operation", parseResult.sqlType().name());
         preview.put("sql", sql);
-        preview.put(KEY_MESSAGE, "预览模式，SQL 校验通过，未实际执行。请重新调用并设置 confirm=true 确认执行。");
+        preview.put(KEY_MESSAGE, messages.previewMessage());
         preview.put("actionRequired", "confirm");
         return preview;
     }
@@ -140,36 +143,36 @@ public class SqlExecutor {
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
                 result.put("rows", rows);
                 result.put("rowCount", rows.size());
-                result.put(KEY_MESSAGE, "查询成功，返回 " + rows.size() + " 行");
+                result.put(KEY_MESSAGE, messages.selectSuccess(rows.size()));
             }
             case INSERT -> {
                 int affected = jdbcTemplate.update(sql);
                 result.put(KEY_AFFECTED_ROWS, affected);
-                result.put(KEY_MESSAGE, "插入成功，影响 " + affected + " 行");
+                result.put(KEY_MESSAGE, messages.insertSuccess(affected));
             }
             case UPDATE -> {
                 int affected = jdbcTemplate.update(sql);
                 result.put(KEY_AFFECTED_ROWS, affected);
-                result.put(KEY_MESSAGE, "更新成功，影响 " + affected + " 行");
+                result.put(KEY_MESSAGE, messages.updateSuccess(affected));
             }
             case DELETE -> {
                 int affected = jdbcTemplate.update(sql);
                 result.put(KEY_AFFECTED_ROWS, affected);
-                result.put(KEY_MESSAGE, "删除成功，影响 " + affected + " 行");
+                result.put(KEY_MESSAGE, messages.deleteSuccess(affected));
             }
             case CREATE_TABLE -> {
                 jdbcTemplate.execute(sql);
                 result.put("tableName", extractTableName(sql));
-                result.put(KEY_MESSAGE, "创建成功");
+                result.put(KEY_MESSAGE, messages.createSuccess());
             }
             case DROP_TABLE -> {
                 String tableName = extractTableName(sql);
                 jdbcTemplate.execute(sql);
                 result.put("tableName", tableName);
-                result.put(KEY_MESSAGE, "删除成功");
+                result.put(KEY_MESSAGE, messages.dropSuccess());
             }
             default -> throw new McpBusinessException(McpErrorCode.EXECUTION_FAILED,
-                    "Unsupported SQL type: " + sqlType);
+                    messages.unsupportedType() + ": " + sqlType, messages.isEnglish() ? "en" : "zh");
         }
 
         result.put("executionTimeMs", System.currentTimeMillis() - start);
