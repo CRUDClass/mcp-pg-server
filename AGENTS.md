@@ -18,12 +18,15 @@ mvn spring-boot:run
 # Run JAR
 java -jar target/pg-server-1.0.0.jar
 
-# Run in STDIO mode (for MCP client integration)
+# Run in STDIO mode (for MCP client integration) — Docker
 docker run -i --rm --init --pull=always \
   -e SPRING_PROFILES_ACTIVE=stdio \
   -e PG_HOST=your-host -e PG_DATABASE=your-db \
   -e PG_USERNAME=your-user -e PG_PASSWORD=your-password \
   mcp-pg-server:latest
+
+# Run in STDIO mode — local JAR
+SPRING_PROFILES_ACTIVE=stdio java -jar target/pg-server-1.0.0.jar
 ```
 
 ## Run a single test
