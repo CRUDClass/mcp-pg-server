@@ -47,6 +47,45 @@ java -jar target/pg-server-1.0.0.jar
 docker compose up -d --build
 ```
 
+### Docker (STDIO Mode)
+
+For MCP clients that communicate via standard input/output (e.g., Claude Desktop):
+
+```bash
+docker run -i --rm --init --pull=always \
+  -e SPRING_PROFILES_ACTIVE=stdio \
+  -e PG_HOST=your-host \
+  -e PG_PORT=5432 \
+  -e PG_DATABASE=your-db \
+  -e PG_USERNAME=your-user \
+  -e PG_PASSWORD=your-password \
+  mcp-pg-server:latest
+```
+
+**MCP Client Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "pg-server": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--init", "--pull=always",
+        "-e", "SPRING_PROFILES_ACTIVE=stdio",
+        "-e", "PG_HOST",
+        "-e", "PG_PORT",
+        "-e", "PG_DATABASE",
+        "-e", "PG_USERNAME",
+        "-e", "PG_PASSWORD",
+        "mcp-pg-server:latest"
+      ]
+    }
+  }
+}
+```
+
+> The `--pull=always` flag ensures the latest image is fetched. Omit it when using a locally built image.
+
 ### MCP Client Configuration
 
 Add to your MCP client's configuration:
@@ -85,6 +124,7 @@ Add to your MCP client's configuration:
 | `PG_USERNAME` | `root` | Database user |
 | `PG_PASSWORD` | `123456` | Database password |
 | `TOOL_LOCALE` | `zh` | Tool description language (`zh` or `en`) |
+| `SPRING_PROFILES_ACTIVE` | (none) | Set to `stdio` to enable STDIO transport mode |
 
 ## License
 
